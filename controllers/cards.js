@@ -68,7 +68,7 @@ const likeCard = async (req, res) => {
     if (!updatedCard) {
       res.status(HTTP_STATUS_NOT_FOUND).send({ message: 'Карточка с таким ID не найдена' });
     } else {
-      res.status(200).json(updatedCard);
+      res.json(updatedCard);
     }
   } catch (err) {
     if (err instanceof ValidationError) {
@@ -100,7 +100,7 @@ const dislikeCard = async (req, res) => {
     if (!updatedCard) {
       res.status(HTTP_STATUS_NOT_FOUND).send({ message: 'Карточка с таким ID не найдена' });
     } else {
-      res.status(200).json(updatedCard);
+      res.json(updatedCard);
     }
   } catch (err) {
     if (err instanceof ValidationError) {
