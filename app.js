@@ -10,6 +10,7 @@ const url = 'mongodb://localhost:27017/mestodb';
 
 mongoose.connect(url, {
   useNewUrlParser: true,
+  useUnifiedTopology: true,
 });
 
 app.use(express.urlencoded({ extended: true }));
@@ -24,6 +25,9 @@ app.use((req, res, next) => {
 
 app.use(router);
 
-app.listen(PORT, () => {
-  console.log(`Сервер запущен ${PORT}`);
+// Обработка ошибки 404
+app.use((req, res) => {
+  res.status(404).send({ message: 'Запрашиваемый ресурс не найден' });
 });
+
+app.listen(PORT, () => {});

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+
 const { ObjectId } = mongoose.Schema.Types;
 
 const cardSchema = new mongoose.Schema({
