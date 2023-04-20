@@ -95,7 +95,6 @@ const updateAvatar = async (req, res) => {
       {
         new: true,
         runValidators: true,
-        upsert: true,
       },
     ).orFail();
     res.send({ data: user });
