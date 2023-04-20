@@ -2,10 +2,10 @@ const { CastError, ValidationError } = require('mongoose').Error;
 const Card = require('../models/card');
 
 const {
-  HTTP_STATUS_CREATED,
-  HTTP_STATUS_BAD_REQUEST,
-  HTTP_STATUS_NOT_FOUND,
-  HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  CREATED_201,
+  BAD_REQUEST_400,
+  NOT_FOUND_404,
+  INTERNAL_SERVER_ERROR_500,
 } = require('../utils/constants');
 
 const getCards = async (_, res) => {
@@ -13,7 +13,7 @@ const getCards = async (_, res) => {
     const cards = await Card.find({}).populate(['owner', 'likes']);
     res.send({ data: cards });
   } catch (err) {
-    res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: err.message });
+    res.status(INTERNAL_SERVER_ERROR_500).send({ message: err.message });
   }
 };
 
@@ -23,17 +23,17 @@ const createCard = async (req, res) => {
   try {
     const card = await Card.create({ name, link, owner: req.user._id });
     const populatedCard = await card.populate(['owner']);
-    res.status(HTTP_STATUS_CREATED).send({ data: populatedCard });
+    res.status(CREATED_201).send({ data: populatedCard });
   } catch (err) {
     if (err instanceof ValidationError) {
       const errorMessage = Object.values(err.errors)
         .map((error) => error.message)
-        .join(' ');
+        .join(', ');
       res
-        .status(HTTP_STATUS_BAD_REQUEST)
-        .send({ message: `Переданы некорректные данные ${errorMessage}` });
+        .status(BAD_REQUEST_400)
+        .send({ message: `Переданы некорректные данные: ${errorMessage}` });
     } else {
-      res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: err.message });
+      res.status(INTERNAL_SERVER_ERROR_500).send({ message: err.message });
     }
   }
 };
@@ -43,17 +43,15 @@ const deleteCardById = async (req, res) => {
     const card = await Card.findByIdAndRemove(req.params.cardId).populate(['owner', 'likes']);
 
     if (!card) {
-      res.status(HTTP_STATUS_NOT_FOUND).send({ message: 'Карточка с таким ID не найдена' });
+      res.status(NOT_FOUND_404).send({ message: 'Карточка с таким ID не найдена' });
     } else {
       res.send({ data: card });
     }
   } catch (err) {
     if (err instanceof CastError) {
-      res
-        .status(HTTP_STATUS_BAD_REQUEST)
-        .send({ message: 'Неверный формат идентификатора карточки' });
+      res.status(BAD_REQUEST_400).send({ message: 'Неверный формат идентификатора карточки' });
     } else {
-      res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Произошла ошибка' });
+      res.status(INTERNAL_SERVER_ERROR_500).send({ message: 'Произошла ошибка' });
     }
   }
 };
@@ -65,8 +63,9 @@ const likeCard = async (req, res) => {
       { $addToSet: { likes: req.user._id } },
       { new: true },
     ).populate(['owner', 'likes']);
+
     if (!updatedCard) {
-      res.status(HTTP_STATUS_NOT_FOUND).send({ message: 'Карточка с таким ID не найдена' });
+      res.status(NOT_FOUND_404).send({ message: 'Карточка с таким ID не найдена' });
     } else {
       res.json(updatedCard);
     }
@@ -74,16 +73,18 @@ const likeCard = async (req, res) => {
     if (err instanceof ValidationError) {
       const errorMessage = Object.values(err.errors)
         .map((error) => error.message)
-        .join(' ');
-      res.status(HTTP_STATUS_BAD_REQUEST).send({
+        .join(', ');
+      res.status(BAD_REQUEST_400).send({
         message: `Переданы некорректные данные для постановки/снятии лайка ${errorMessage}`,
       });
-    } else if (err instanceof CastError) {
+      return;
+    }
+    if (err instanceof CastError) {
       res
-        .status(HTTP_STATUS_BAD_REQUEST)
+        .status(BAD_REQUEST_400)
         .send({ message: 'Неверный формат идентификатора карточки или пользователя' });
     } else {
-      res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).json({ message: 'Произошла ошибка' });
+      res.status(INTERNAL_SERVER_ERROR_500).json({ message: 'Произошла ошибка' });
     }
   }
 };
@@ -98,7 +99,7 @@ const dislikeCard = async (req, res) => {
       { new: true },
     ).populate(['owner', 'likes']);
     if (!updatedCard) {
-      res.status(HTTP_STATUS_NOT_FOUND).send({ message: 'Карточка с таким ID не найдена' });
+      res.status(NOT_FOUND_404).send({ message: 'Карточка с таким ID не найдена' });
     } else {
       res.json(updatedCard);
     }
@@ -106,16 +107,18 @@ const dislikeCard = async (req, res) => {
     if (err instanceof ValidationError) {
       const errorMessage = Object.values(err.errors)
         .map((error) => error.message)
-        .join(' ');
-      res.status(HTTP_STATUS_BAD_REQUEST).send({
+        .join(', ');
+      res.status(BAD_REQUEST_400).send({
         message: `Переданы некорректные данные для постановки/снятии лайка ${errorMessage}`,
       });
-    } else if (err instanceof CastError) {
+      return;
+    }
+    if (err instanceof CastError) {
       res
-        .status(HTTP_STATUS_BAD_REQUEST)
+        .status(BAD_REQUEST_400)
         .send({ message: 'Неверный формат идентификатора карточки или пользователя' });
     } else {
-      res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).json({ message: 'Произошла ошибка' });
+      res.status(INTERNAL_SERVER_ERROR_500).json({ message: 'Произошла ошибка' });
     }
   }
 };
