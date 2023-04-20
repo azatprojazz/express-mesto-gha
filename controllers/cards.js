@@ -70,15 +70,6 @@ const likeCard = async (req, res) => {
       res.json(updatedCard);
     }
   } catch (err) {
-    if (err instanceof ValidationError) {
-      const errorMessage = Object.values(err.errors)
-        .map((error) => error.message)
-        .join(', ');
-      res.status(BAD_REQUEST_400).send({
-        message: `Переданы некорректные данные для постановки/снятии лайка ${errorMessage}`,
-      });
-      return;
-    }
     if (err instanceof CastError) {
       res
         .status(BAD_REQUEST_400)
@@ -104,15 +95,6 @@ const dislikeCard = async (req, res) => {
       res.json(updatedCard);
     }
   } catch (err) {
-    if (err instanceof ValidationError) {
-      const errorMessage = Object.values(err.errors)
-        .map((error) => error.message)
-        .join(', ');
-      res.status(BAD_REQUEST_400).send({
-        message: `Переданы некорректные данные для постановки/снятии лайка ${errorMessage}`,
-      });
-      return;
-    }
     if (err instanceof CastError) {
       res
         .status(BAD_REQUEST_400)

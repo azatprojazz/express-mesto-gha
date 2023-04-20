@@ -1,7 +1,12 @@
 const { DocumentNotFoundError, CastError, ValidationError } = require('mongoose').Error;
 const User = require('../models/user');
 
-const { BAD_REQUEST_400, NOT_FOUND_404, INTERNAL_SERVER_ERROR_500 } = require('../utils/constants');
+const {
+  CREATED_201,
+  BAD_REQUEST_400,
+  NOT_FOUND_404,
+  INTERNAL_SERVER_ERROR_500,
+} = require('../utils/constants');
 
 const getUsers = async (_, res) => {
   try {
@@ -17,7 +22,7 @@ const createUser = async (req, res) => {
 
   try {
     const user = await User.create({ name, about, avatar });
-    res.send({ data: user });
+    res.status(CREATED_201).send({ data: user });
   } catch (err) {
     if (err instanceof ValidationError) {
       const errorMessage = Object.values(err.errors)
@@ -59,7 +64,6 @@ const updateUser = async (req, res) => {
       {
         new: true, // обработчик then получит на вход обновлённую запись
         runValidators: true, // данные будут валидированы перед изменением
-        upsert: true, // если пользователь не найден, он будет создан
       },
     ).orFail();
     res.send({ data: user });
@@ -77,11 +81,7 @@ const updateUser = async (req, res) => {
       res.status(NOT_FOUND_404).send({ message: 'Пользователь с указанным ID не найден' });
       return;
     }
-    if (err instanceof CastError) {
-      res.status(BAD_REQUEST_400).send({ message: 'Неверный формат идентификатора пользователя' });
-    } else {
-      res.status(INTERNAL_SERVER_ERROR_500).send({ message: 'Произошла ошибка' });
-    }
+    res.status(INTERNAL_SERVER_ERROR_500).send({ message: 'Произошла ошибка' });
   }
 };
 
@@ -113,11 +113,7 @@ const updateAvatar = async (req, res) => {
       res.status(NOT_FOUND_404).send({ message: 'Пользователь с указанным ID не найден' });
       return;
     }
-    if (err instanceof CastError) {
-      res.status(BAD_REQUEST_400).send({ message: 'Неверный формат идентификатора пользователя' });
-    } else {
-      res.status(INTERNAL_SERVER_ERROR_500).send({ message: 'Произошла ошибка' });
-    }
+    res.status(INTERNAL_SERVER_ERROR_500).send({ message: 'Произошла ошибка' });
   }
 };
 
