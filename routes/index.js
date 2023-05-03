@@ -3,7 +3,7 @@ const users = require('./users');
 const cards = require('./cards');
 const auth = require('../middlewares/auth');
 const { createUser, login } = require('../controllers/users');
-const { NOT_FOUND_404 } = require('../utils/constants');
+const { NotFoundError } = require('../errors/NotFound');
 const {
   createUserValidation,
   userLoginValidation,
@@ -17,8 +17,8 @@ router.post('/signin', userLoginValidation, login);
 router.use('/users', auth, users);
 router.use('/cards', auth, cards);
 
-router.use((_, res) => {
-  res.status(NOT_FOUND_404).send({ message: 'Запрашиваемый ресурс не найден' });
+router.use('*', auth, (req, res, next) => {
+  next(new NotFoundError('Запрашиваемый ресурс не найден'));
 });
 
 module.exports = router;
