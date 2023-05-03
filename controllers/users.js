@@ -1,125 +1,141 @@
-const { DocumentNotFoundError, CastError, ValidationError } = require('mongoose').Error;
+const { CastError, ValidationError } = require('mongoose').Error;
+
+const bcrypt = require('bcryptjs'); // импортируем bcrypt
+
+const jwt = require('jsonwebtoken'); // импортируем модуль jsonwebtoken
+
+const BadRequestError = require('../errors/BadRequest');
+const ConflictError = require('../errors/Conflict');
+const NotFoundError = require('../errors/NotFound');
+
 const User = require('../models/user');
 
-const {
-  CREATED_201,
-  BAD_REQUEST_400,
-  NOT_FOUND_404,
-  INTERNAL_SERVER_ERROR_500,
-} = require('../utils/constants');
+const { CREATED_201 } = require('../utils/constants');
 
-const getUsers = async (_, res) => {
+const getUsers = async (_, res, next) => {
   try {
     const users = await User.find({});
     res.send({ data: users });
   } catch (err) {
-    res.status(INTERNAL_SERVER_ERROR_500).send({ message: err.message });
+    next(err);
   }
 };
 
-const createUser = async (req, res) => {
-  const { name, about, avatar } = req.body;
+const getCurrentUser = (req, res, next) => {
+  const currentUserId = req.user._id;
+  User.findById(currentUserId)
+    .then((user) => res.send(user))
+    .catch(next);
+};
+
+const createUser = async (req, res, next) => {
+  const {
+    name, about, avatar, email, password,
+  } = req.body;
 
   try {
-    const user = await User.create({ name, about, avatar });
+    const user = await bcrypt.hash(password, 10).then((hash) => User.create({
+      name,
+      about,
+      avatar,
+      email,
+      password: hash,
+    }));
     res.status(CREATED_201).send({ data: user });
   } catch (err) {
     if (err instanceof ValidationError) {
       const errorMessage = Object.values(err.errors)
         .map((error) => error.message)
         .join(', ');
-      res
-        .status(BAD_REQUEST_400)
-        .send({ message: `Переданы некорректные данные: ${errorMessage}` });
+      next(new BadRequestError(`Переданы некорректные данные: ${errorMessage}`));
+    }
+    if (err.code === 11000) {
+      next(new ConflictError('Такой пользователь уже существует в базе данных'));
     } else {
-      res.status(INTERNAL_SERVER_ERROR_500).send({ message: err.message });
+      next(err);
     }
   }
 };
 
-const getUserById = async (req, res) => {
+const login = (req, res, next) => {
+  const { email, password } = req.body;
+
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      // создадим токен
+      const token = jwt.sign({ _id: user._id }, 'some-secret-key', { expiresIn: '7d' });
+
+      // отправим токен, браузер сохранит его в куках
+      res
+        .cookie('jwt', token, {
+          // token - наш JWT токен, который мы отправляем
+          maxAge: 3600000,
+          httpOnly: true,
+          sameSite: true,
+        })
+        .end(); // если у ответа нет тела, можно использовать метод end
+    })
+    .catch(next);
+};
+
+const getUserById = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).orFail();
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      throw new NotFoundError('Пользователя нет в базе');
+    }
     res.send({ data: user });
   } catch (err) {
-    if (err instanceof DocumentNotFoundError) {
-      res.status(NOT_FOUND_404).send({ message: 'Пользователя нет в базе' });
-      return;
-    }
     if (err instanceof CastError) {
-      res.status(BAD_REQUEST_400).send({ message: 'Неверный формат идентификатора пользователя' });
+      next(new BadRequestError('Неверный формат идентификатора пользователя'));
     } else {
-      res.status(INTERNAL_SERVER_ERROR_500).send({ message: 'Произошла ошибка' });
+      next(err);
     }
   }
 };
 
-const updateUser = async (req, res) => {
-  const { name, about } = req.body;
-
+const updateUser = async (req, res, updateData, next) => {
   try {
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { name, about },
-      {
-        new: true, // обработчик then получит на вход обновлённую запись
-        runValidators: true, // данные будут валидированы перед изменением
-      },
-    ).orFail();
+    const user = await User.findByIdAndUpdate(req.user._id, updateData, {
+      new: true, // обработчик then получит на вход обновлённую запись
+      runValidators: true, // данные будут валидированы перед изменением
+    });
+    if (!user) {
+      throw new NotFoundError('Пользователь с указанным ID не найден');
+    }
     res.send({ data: user });
   } catch (err) {
     if (err instanceof ValidationError) {
       const errorMessage = Object.values(err.errors)
         .map((error) => error.message)
         .join(', ');
-      res
-        .status(BAD_REQUEST_400)
-        .send({ message: `Переданы некорректные данные при обновлении профиля: ${errorMessage}` });
-      return;
+      next(
+        new BadRequestError(`Переданы некорректные данные при обновлении профиля: ${errorMessage}`),
+      );
+    } else {
+      next(err);
     }
-    if (err instanceof DocumentNotFoundError) {
-      res.status(NOT_FOUND_404).send({ message: 'Пользователь с указанным ID не найден' });
-      return;
-    }
-    res.status(INTERNAL_SERVER_ERROR_500).send({ message: 'Произошла ошибка' });
   }
+};
+
+const updateProfile = async (req, res) => {
+  const { name, about } = req.body;
+  const updateData = { name, about };
+  updateUser(req, res, updateData);
 };
 
 const updateAvatar = async (req, res) => {
   const { avatar } = req.body;
-
-  try {
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { avatar },
-      {
-        new: true,
-        runValidators: true,
-      },
-    ).orFail();
-    res.send({ data: user });
-  } catch (err) {
-    if (err instanceof ValidationError) {
-      const errorMessage = Object.values(err.errors)
-        .map((error) => error.message)
-        .join(', ');
-      res
-        .status(BAD_REQUEST_400)
-        .send({ message: `Переданы некорректные данные при обновлении аватара: ${errorMessage}` });
-      return;
-    }
-    if (err instanceof DocumentNotFoundError) {
-      res.status(NOT_FOUND_404).send({ message: 'Пользователь с указанным ID не найден' });
-      return;
-    }
-    res.status(INTERNAL_SERVER_ERROR_500).send({ message: 'Произошла ошибка' });
-  }
+  const updateData = { avatar };
+  updateUser(req, res, updateData);
 };
 
 module.exports = {
   getUsers,
+  getCurrentUser,
   createUser,
+  login,
   getUserById,
-  updateUser,
+  updateProfile,
   updateAvatar,
 };

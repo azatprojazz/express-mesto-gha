@@ -1,23 +1,23 @@
 const { CastError, ValidationError } = require('mongoose').Error;
+const BadRequestError = require('../errors/BadRequest');
+const ForbiddenError = require('../errors/Forbidden');
+const NotFoundError = require('../errors/NotFound');
 const Card = require('../models/card');
 
 const {
   CREATED_201,
-  BAD_REQUEST_400,
-  NOT_FOUND_404,
-  INTERNAL_SERVER_ERROR_500,
 } = require('../utils/constants');
 
-const getCards = async (_, res) => {
+const getCards = async (_, res, next) => {
   try {
     const cards = await Card.find({}).populate(['owner', 'likes']);
     res.send({ data: cards });
   } catch (err) {
-    res.status(INTERNAL_SERVER_ERROR_500).send({ message: err.message });
+    next(err);
   }
 };
 
-const createCard = async (req, res) => {
+const createCard = async (req, res, next) => {
   const { name, link } = req.body;
 
   try {
@@ -29,80 +29,63 @@ const createCard = async (req, res) => {
       const errorMessage = Object.values(err.errors)
         .map((error) => error.message)
         .join(', ');
-      res
-        .status(BAD_REQUEST_400)
-        .send({ message: `Переданы некорректные данные: ${errorMessage}` });
+      next(new BadRequestError(`Переданы некорректные данные: ${errorMessage}`));
     } else {
-      res.status(INTERNAL_SERVER_ERROR_500).send({ message: err.message });
+      next(err);
     }
   }
 };
 
-const deleteCardById = async (req, res) => {
+const deleteCardById = async (req, res, next) => {
   try {
-    const card = await Card.findByIdAndRemove(req.params.cardId).populate(['owner', 'likes']);
-
+    const card = await Card.findById(req.params.cardId);
+    if (req.user._id !== card.owner.toString()) {
+      next(new ForbiddenError('Карточку нельзя удалить'));
+      return;
+    }
     if (!card) {
-      res.status(NOT_FOUND_404).send({ message: 'Карточка с таким ID не найдена' });
-    } else {
-      res.send({ data: card });
+      next(new NotFoundError('Карточка с таким ID не найдена'));
+      return;
     }
+    await Card.findByIdAndRemove(req.params.cardId).populate(['owner', 'likes']);
+    res.send({ data: card });
   } catch (err) {
     if (err instanceof CastError) {
-      res.status(BAD_REQUEST_400).send({ message: 'Неверный формат идентификатора карточки' });
+      next(new BadRequestError('Неверный формат идентификатора карточки'));
     } else {
-      res.status(INTERNAL_SERVER_ERROR_500).send({ message: 'Произошла ошибка' });
+      next(err);
     }
   }
 };
 
-const likeCard = async (req, res) => {
+const changeLikeCard = async (req, res, likeData, next) => {
   try {
-    const updatedCard = await Card.findByIdAndUpdate(
-      req.params.cardId,
-      { $addToSet: { likes: req.user._id } },
-      { new: true },
-    ).populate(['owner', 'likes']);
+    const updatedCard = await Card.findByIdAndUpdate(req.params.cardId, likeData, {
+      new: true,
+    }).populate(['owner', 'likes']);
 
     if (!updatedCard) {
-      res.status(NOT_FOUND_404).send({ message: 'Карточка с таким ID не найдена' });
+      next(new NotFoundError('Карточка с таким ID не найдена'));
     } else {
       res.json(updatedCard);
     }
   } catch (err) {
     if (err instanceof CastError) {
-      res
-        .status(BAD_REQUEST_400)
-        .send({ message: 'Неверный формат идентификатора карточки или пользователя' });
+      next(new BadRequestError('Неверный формат идентификатора карточки или пользователя'));
     } else {
-      res.status(INTERNAL_SERVER_ERROR_500).json({ message: 'Произошла ошибка' });
+      next(err);
     }
   }
 };
 
-const dislikeCard = async (req, res) => {
-  try {
-    const updatedCard = await Card.findByIdAndUpdate(
-      req.params.cardId,
-      {
-        $pull: { likes: req.user._id },
-      },
-      { new: true },
-    ).populate(['owner', 'likes']);
-    if (!updatedCard) {
-      res.status(NOT_FOUND_404).send({ message: 'Карточка с таким ID не найдена' });
-    } else {
-      res.json(updatedCard);
-    }
-  } catch (err) {
-    if (err instanceof CastError) {
-      res
-        .status(BAD_REQUEST_400)
-        .send({ message: 'Неверный формат идентификатора карточки или пользователя' });
-    } else {
-      res.status(INTERNAL_SERVER_ERROR_500).json({ message: 'Произошла ошибка' });
-    }
-  }
+const likeCard = async (req, res, next) => {
+  const likeData = { $addToSet: { likes: req.user._id } };
+  changeLikeCard(req, res, likeData, next);
+};
+
+const dislikeCard = async (req, res, next) => {
+  const likeData = { $pull: { likes: req.user._id } };
+  changeLikeCard(req, res, likeData, next);
 };
 
 module.exports = {
