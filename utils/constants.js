@@ -10,6 +10,8 @@ const {
   HTTP_STATUS_CONFLICT: CONFLICT_409,
 } = http2.constants;
 
+const regExp = /https?:\/\/w{0,3}\.?[\w0-9-]{1,10}\.\w{2,3}[\w\d\-._~:/?\]@!$&'()*+,;=]{0,}/m;
+
 module.exports = {
   CREATED_201,
   BAD_REQUEST_400,
@@ -18,4 +20,5 @@ module.exports = {
   NOT_FOUND_404,
   CONFLICT_409,
   INTERNAL_SERVER_ERROR_500,
+  regExp,
 };
