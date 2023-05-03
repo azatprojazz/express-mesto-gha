@@ -1,6 +1,7 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
+const { errors } = require('celebrate');
 const router = require('./routes/index');
 const errorMiddleware = require('./middlewares/errorMiddleware');
 
@@ -18,7 +19,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use(router);
-
+app.use(errors());
 app.use(errorMiddleware);
 
 app.listen(PORT, () => {
