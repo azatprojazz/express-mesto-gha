@@ -47,7 +47,7 @@ const deleteCardById = async (req, res, next) => {
       next(new ForbiddenError('Карточку нельзя удалить'));
       return;
     }
-    await Card.findByIdAndRemove(req.params.cardId).populate(['owner', 'likes']);
+    await card.deleteOne();
     res.send({ data: card });
   } catch (err) {
     if (err instanceof CastError) {
