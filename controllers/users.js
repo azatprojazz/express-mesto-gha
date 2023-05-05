@@ -57,25 +57,25 @@ const createUser = async (req, res, next) => {
   }
 };
 
-const login = (req, res, next) => {
+const login = async (req, res, next) => {
   const { email, password } = req.body;
 
-  return User.findUserByCredentials(email, password)
-    .then((user) => {
-      // создадим токен
-      const token = jwt.sign({ _id: user._id }, 'some-secret-key', { expiresIn: '7d' });
-
-      // отправим токен, браузер сохранит его в куках
-      res
-        .cookie('jwt', token, {
-          // token - наш JWT токен, который мы отправляем
-          maxAge: 3600000,
-          httpOnly: true,
-          sameSite: true,
-        })
-        .send({ message: 'Успешная аутентификация' });
-    })
-    .catch(next);
+  try {
+    const user = await User.findUserByCredentials(email, password);
+    // Создаем JWT токен
+    const token = jwt.sign({ _id: user._id }, 'some-secret-key', { expiresIn: '7d' });
+    // Отправляем токен в куки, браузер автоматически сохранит его
+    res
+      .cookie('jwt', token, {
+        // token - наш JWT токен, который мы отправляем
+        maxAge: 3600000, // Устанавливаем время жизни куки
+        httpOnly: true, // Флаг, указывающий, что куки должны быть доступны только через HTTP(S)
+        sameSite: true, // Куки отправляются только если домен запроса совпадает с доменом куки
+      })
+      .send({ message: 'Успешная аутентификация' });
+  } catch (error) {
+    next(error);
+  }
 };
 
 const logout = (req, res) => {

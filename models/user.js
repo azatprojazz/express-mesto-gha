@@ -6,6 +6,8 @@ const bcrypt = require('bcryptjs'); // импортируем bcrypt
 
 const UnauthorizedError = require('../errors/Unauthorized');
 
+const { regExp } = require('../utils/constants');
+
 const userSchema = new mongoose.Schema(
   {
     email: {
@@ -37,6 +39,11 @@ const userSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
+      validator: {
+        validator(values) {
+          return regExp.test(values);
+        },
+      },
       default: 'https://pictures.s3.yandex.net/resources/jacques-cousteau_1604399756.png',
     },
   },
