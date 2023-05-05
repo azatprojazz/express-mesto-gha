@@ -10,7 +10,7 @@ const {
   HTTP_STATUS_CONFLICT: CONFLICT_409,
 } = http2.constants;
 
-const regExp = /https?:\/\/w{0,3}\.?[\w0-9-]{1,10}\.\w{2,3}[\w\d\-._~:/?\]@!$&'()*+,;=]{0,}/m;
+const regExp = /https?:\/\/\w{0,3}\.?[\w\-.]+\.\w+([/\w\d\-._~:/?\]@!$&'()*+,;=]*)*$/m;
 
 module.exports = {
   CREATED_201,
