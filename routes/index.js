@@ -3,7 +3,7 @@ const users = require('./users');
 const cards = require('./cards');
 const auth = require('../middlewares/auth');
 const { createUser, login } = require('../controllers/users');
-const { NotFoundError } = require('../errors/NotFound');
+const NotFoundError = require('../errors/NotFound');
 const {
   createUserValidation,
   userLoginValidation,

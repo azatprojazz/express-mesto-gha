@@ -73,7 +73,7 @@ const login = (req, res, next) => {
           httpOnly: true,
           sameSite: true,
         })
-        .end(); // если у ответа нет тела, можно использовать метод end
+        .send({ message: 'Успешная аутентификация' });
     })
     .catch(next);
 };

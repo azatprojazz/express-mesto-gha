@@ -39,12 +39,12 @@ const createCard = async (req, res, next) => {
 const deleteCardById = async (req, res, next) => {
   try {
     const card = await Card.findById(req.params.cardId);
-    if (req.user._id !== card.owner.toString()) {
-      next(new ForbiddenError('Карточку нельзя удалить'));
-      return;
-    }
     if (!card) {
       next(new NotFoundError('Карточка с таким ID не найдена'));
+      return;
+    }
+    if (req.user._id !== card.owner.toString()) {
+      next(new ForbiddenError('Карточку нельзя удалить'));
       return;
     }
     await Card.findByIdAndRemove(req.params.cardId).populate(['owner', 'likes']);
